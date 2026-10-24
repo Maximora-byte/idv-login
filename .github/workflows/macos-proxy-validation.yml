@@ -1,0 +1,16 @@
+name: Native macOS proxy validation
+on:
+  push:
+    branches: [validation/macos-proxy-restore]
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: macos-14
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -B tests/probe_native_macos.py
