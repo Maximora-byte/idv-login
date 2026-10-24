@@ -6,11 +6,17 @@ permissions:
   contents: read
 jobs:
   native:
-    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -B tests/probe_native_macos.py
+      - run: python -B -m unittest discover -s tests -p 'test_proxy_env*.py' -v
+        env:
+          IDV_TEST_MACOS_PROXY: '1'
