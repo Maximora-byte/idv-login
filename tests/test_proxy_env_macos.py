@@ -28,7 +28,7 @@ if str(SRC) not in sys.path:
 )
 class NativeMacProxyTests(unittest.TestCase):
     def setUp(self):
-        self.run = subprocess.run
+        self._real_run = subprocess.run
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.directory = Path(directory.name)
@@ -50,7 +50,7 @@ class NativeMacProxyTests(unittest.TestCase):
         self.assertEqual(command[0], "networksetup")
         if command[1] != "-listallhardwareports":
             self.assertEqual(command[2], self.service)
-        return self.run(["sudo", "-n", "/usr/sbin/networksetup", *command[1:]], **kwargs)
+        return self._real_run(["sudo", "-n", "/usr/sbin/networksetup", *command[1:]], **kwargs)
 
     def load_module(self):
         spec = importlib.util.spec_from_file_location("envmgr_native_mac_test", SRC / "envmgr.py")
