@@ -1,0 +1,32 @@
+name: HTTPS verification proof
+on:
+  push:
+    branches: [validation/https-verification]
+permissions:
+  contents: read
+jobs:
+  tls:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies already declared by the project
+        run: python -m pip install Requests==2.33.1 cryptography==42.0.8 loguru==0.7.2 psutil==5.9.8
+      - run: python -B -m unittest discover -s tests -p test_ssl_verification.py -v
+      - run: python -B -m unittest discover -s tests -p test_hotfix_tls.py -v
+      - run: python -B -m unittest discover -s tests -p test_game_catalog.py -v
+      - run: python -B -m unittest discover -s tests -p test_cloudres_dynamic_catalog.py -v
+      - run: python -m compileall -q src
+      - name: Freeze a Requests and SSL policy smoke test using the release bundler
+        if: runner.os == 'macOS'
+        run: |
+          python -m pip install pyinstaller
+          python -m PyInstaller -F --name tls-bundle-probe --paths src proof/tls_bundle_probe.py
+          python -B proof/check_frozen_tls.py
