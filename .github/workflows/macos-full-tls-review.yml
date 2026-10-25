@@ -1,0 +1,46 @@
+name: macOS full dependency TLS review
+on:
+  push:
+    branches: [validation/macos-full-tls-review]
+permissions:
+  contents: read
+jobs:
+  full-application:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install the complete release dependency set
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+          python -m pip check
+          python -m pip freeze
+      - name: Recheck focused TLS and hotfix tests with full dependencies
+        run: |
+          python -B -W error::ResourceWarning -m unittest discover -s tests -p test_ssl_verification.py -v
+          python -B -W error::ResourceWarning -m unittest discover -s tests -p test_hotfix_tls.py -v
+          python -m compileall -q src
+      - name: Validate source imports and actual cloud and hotfix callers
+        run: python -B proof/check_full_app_tls.py --python "$(which python)" --public
+      - name: Build the normal main entrypoint with the release command
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          Path('src/buildinfo.py').write_text('BUILD_INFO = "PR 172 compatibility review"\nVERSION = "pr172-review"\n', encoding='utf-8')
+          PY
+          pyinstaller -F src/main.py -n idv-login-tls-release-review -i assets/icon.ico
+          dist/idv-login-tls-release-review --help
+      - name: Build a probe retaining the complete main import graph
+        run: |
+          pyinstaller -F --paths src proof/full_app_tls_probe.py -n full-app-tls-proof
+          python -B proof/check_full_app_tls.py --probe dist/full-app-tls-proof --public
